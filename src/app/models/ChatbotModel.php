@@ -27,6 +27,18 @@ class ChatbotModel {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    public function layLichSuTheoNguoiDung($nguoidungId, $limit = 50) {
+        $sql = "SELECT * FROM chatbot_messages 
+                WHERE nguoidung_id = :nguoidung_id 
+                ORDER BY id ASC 
+                LIMIT :limit";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     public function xoaHoiThoai($sessionId) {
         try {
@@ -49,8 +61,33 @@ class ChatbotModel {
             return false;
         }
     }
+    
+    public function xoaHoiThoaiTheoNguoiDung($nguoidungId) {
+        try {
+            $this->db->beginTransaction();
+            
+            // Xóa tất cả tin nhắn của người dùng
+            $sqlDeleteMessages = "DELETE FROM chatbot_messages WHERE nguoidung_id = :nguoidung_id";
+            $stmtDeleteMessages = $this->db->prepare($sqlDeleteMessages);
+            $stmtDeleteMessages->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
+            $stmtDeleteMessages->execute();
+            
+            // Xóa các cuộc hội thoại của người dùng
+            $sqlDeleteConv = "DELETE FROM chatbot_conversations WHERE nguoidung_id = :nguoidung_id";
+            $stmtDeleteConv = $this->db->prepare($sqlDeleteConv);
+            $stmtDeleteConv->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
+            $stmtDeleteConv->execute();
+            
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("Xóa hội thoại theo người dùng lỗi: " . $e->getMessage());
+            return false;
+        }
+    }
 
-    public function luuTinNhan($sessionId, $message, $response) {
+    public function luuTinNhan($sessionId, $message, $response, $nguoidungId = null) {
         $sqlCheck = "SELECT id FROM chatbot_conversations WHERE session_id = :session_id";
         $stmtCheck = $this->db->prepare($sqlCheck);
         $stmtCheck->bindParam(':session_id', $sessionId);
@@ -58,31 +95,43 @@ class ChatbotModel {
         $conversation = $stmtCheck->fetch(PDO::FETCH_ASSOC);
         
         if (!$conversation) {
-            $sqlConv = "INSERT INTO chatbot_conversations (session_id, started_at) 
-                       VALUES (:session_id, NOW())";
+            $sqlConv = "INSERT INTO chatbot_conversations (session_id, nguoidung_id, ngaytao) 
+                       VALUES (:session_id, :nguoidung_id, NOW())";
             $stmtConv = $this->db->prepare($sqlConv);
             $stmtConv->bindParam(':session_id', $sessionId);
+            $stmtConv->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
             $stmtConv->execute();
             $conversationId = $this->db->lastInsertId();
         } else {
             $conversationId = $conversation['id'];
+            
+            // Cập nhật nguoidung_id nếu chưa có
+            if ($nguoidungId) {
+                $sqlUpdate = "UPDATE chatbot_conversations SET nguoidung_id = :nguoidung_id WHERE id = :id";
+                $stmtUpdate = $this->db->prepare($sqlUpdate);
+                $stmtUpdate->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
+                $stmtUpdate->bindParam(':id', $conversationId, PDO::PARAM_INT);
+                $stmtUpdate->execute();
+            }
         }
         
-        $sqlUser = "INSERT INTO chatbot_messages (session_id, conversation_id, message, message_type, created_at)
-                   VALUES (:session_id, :conversation_id, :message, 'user', NOW())";
+        $sqlUser = "INSERT INTO chatbot_messages (session_id, conversation_id, message, message_type, nguoidung_id, created_at)
+                   VALUES (:session_id, :conversation_id, :message, 'user', :nguoidung_id, NOW())";
         $stmtUser = $this->db->prepare($sqlUser);
         $stmtUser->bindParam(':session_id', $sessionId);
         $stmtUser->bindParam(':conversation_id', $conversationId);
         $stmtUser->bindParam(':message', $message);
+        $stmtUser->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
         $stmtUser->execute();
         
-        $sqlBot = "INSERT INTO chatbot_messages (session_id, conversation_id, message, response, message_type, created_at)
-                  VALUES (:session_id, :conversation_id, :message, :response, 'bot', NOW())";
+        $sqlBot = "INSERT INTO chatbot_messages (session_id, conversation_id, message, response, message_type, nguoidung_id, created_at)
+                  VALUES (:session_id, :conversation_id, :message, :response, 'bot', :nguoidung_id, NOW())";
         $stmtBot = $this->db->prepare($sqlBot);
         $stmtBot->bindParam(':session_id', $sessionId);
         $stmtBot->bindParam(':conversation_id', $conversationId);
         $stmtBot->bindParam(':message', $message);
         $stmtBot->bindParam(':response', $response);
+        $stmtBot->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
         return $stmtBot->execute();
     }
 
@@ -215,6 +264,71 @@ class ChatbotModel {
                 LIMIT :limit";
         $stmt = $this->db->prepare($sql);
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Tìm việc làm theo vị trí dựa trên địa chỉ người dùng
+     * So khớp với cả diachilamviec và tinhthanh
+     */
+    public function timViecTheoViTri($diachiNguoiDung, $addressParts) {
+        $sql = "SELECT t.*, n.tennganh, tt.tentinh, l.tenloai, m.tenmucluong,
+                nd.hoten, nhatd.tencongty, nhatd.logo
+                FROM tintuyendung t
+                LEFT JOIN nganhnghe n ON t.nganhnghe_id = n.id
+                LEFT JOIN tinhthanh tt ON t.tinhthanh_id = tt.id
+                LEFT JOIN loaicongviec l ON t.loaicongviec_id = l.id
+                LEFT JOIN mucluong m ON t.mucluong_id = m.id
+                LEFT JOIN nguoidung nd ON t.nguoidung_id = nd.id
+                LEFT JOIN thongtinnhatuyendung nhatd ON nd.id = nhatd.nguoidung_id
+                WHERE t.trangthai = 'dangmo' AND t.ngayhethan >= CURDATE()";
+        
+        $conditions = [];
+        $params = [];
+        
+        // Tìm theo tỉnh/thành phố
+        if (!empty($addressParts['tinh'])) {
+            $conditions[] = "(tt.tentinh LIKE :tinh OR LOWER(t.diachilamviec) LIKE :diachitinh)";
+            $params[':tinh'] = '%' . $addressParts['tinh'] . '%';
+            $params[':diachitinh'] = '%' . mb_strtolower($addressParts['tinh'], 'UTF-8') . '%';
+        }
+        
+        // Tìm theo quận/huyện nếu có
+        if (!empty($addressParts['quan'])) {
+            $conditions[] = "LOWER(t.diachilamviec) LIKE :quan";
+            $params[':quan'] = '%' . mb_strtolower($addressParts['quan'], 'UTF-8') . '%';
+        }
+        
+        // Tìm theo phường/xã nếu có
+        if (!empty($addressParts['phuong'])) {
+            $conditions[] = "LOWER(t.diachilamviec) LIKE :phuong";
+            $params[':phuong'] = '%' . mb_strtolower($addressParts['phuong'], 'UTF-8') . '%';
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " AND (" . implode(' OR ', $conditions) . ")";
+        }
+        
+        $sql .= " ORDER BY 
+                  CASE 
+                    WHEN LOWER(t.diachilamviec) LIKE :diachichinh THEN 1
+                    WHEN tt.tentinh LIKE :tinhchinh THEN 2
+                    ELSE 3
+                  END,
+                  t.ngaydang DESC 
+                  LIMIT 10";
+        
+        // Thêm params cho ORDER BY
+        $params[':diachichinh'] = '%' . $diachiNguoiDung . '%';
+        $params[':tinhchinh'] = !empty($addressParts['tinh']) ? '%' . $addressParts['tinh'] . '%' : '%';
+        
+        $stmt = $this->db->prepare($sql);
+        
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

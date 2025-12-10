@@ -3,6 +3,8 @@ class Chatbot {
         this.isOpen = false;
         this.messages = [];
         this.sessionId = this.getSessionId();
+        this.unreadCount = 0;
+        this.hasOpenedBefore = this.checkIfOpenedBefore();
         this.init();
     }
     
@@ -43,12 +45,41 @@ class Chatbot {
         return null;
     }
     
+    checkIfOpenedBefore() {
+        return false; // Không cần kiểm tra nữa
+    }
+    
+    markAsOpened() {
+        // Không cần lưu gì
+    }
+    
+    updateBadge(count) {
+        const badge = document.getElementById('chatbotBadge');
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    incrementUnreadCount() {
+        if (!this.isOpen) {
+            this.unreadCount++;
+            this.updateBadge(this.unreadCount);
+        }
+    }
+    
+    resetUnreadCount() {
+        this.unreadCount = 0;
+        this.updateBadge(0);
+    }
+    
     createChatbotHTML() {
         const chatbotHTML = `
             <!-- Nút mở chatbot -->
             <div class="chatbot-toggle" id="chatbotToggle">
                 <i class="fas fa-comments"></i>
-                <span class="chatbot-badge" id="chatbotBadge" style="display: none;">1</span>
             </div>
             
             <!-- Container chatbot -->
@@ -153,13 +184,44 @@ class Chatbot {
                     localStorage.setItem(storageKey, data.sessionId);
                 }
                 
-                // Hiển thị messages
+                // Đếm TỔNG số tin nhắn bot
+                let botMessageCount = 0;
+                
+                // Nhóm tin nhắn thành cặp user-bot
+                let currentUserMsg = null;
+                const messagePairs = [];
+                
                 data.messages.forEach(msg => {
                     if (msg.message_type === 'user') {
-                        this.addMessageToUI(msg.message, 'user', false);
+                        // Nếu có tin user trước đó chưa có bot reply, thêm vào
+                        if (currentUserMsg) {
+                            messagePairs.push({ user: currentUserMsg, bot: null });
+                        }
+                        currentUserMsg = msg;
                     } else {
+                        // Tin nhắn bot - ghép với user message hiện tại
+                        messagePairs.push({ 
+                            user: currentUserMsg, 
+                            bot: msg 
+                        });
+                        currentUserMsg = null;
+                        botMessageCount++;
+                    }
+                });
+                
+                // Nếu còn user message cuối chưa có reply
+                if (currentUserMsg) {
+                    messagePairs.push({ user: currentUserMsg, bot: null });
+                }
+                
+                // Hiển thị theo cặp: user trước, bot sau
+                messagePairs.forEach(pair => {
+                    if (pair.user) {
+                        this.addMessageToUI(pair.user.message, 'user', false);
+                    }
+                    if (pair.bot) {
                         try {
-                            const responseData = JSON.parse(msg.response);
+                            const responseData = JSON.parse(pair.bot.response);
                             this.addMessageToUI('', 'bot', false, responseData);
                         } catch (e) {
                             console.error('Parse response error:', e);
@@ -167,9 +229,6 @@ class Chatbot {
                     }
                 });
                 
-                // Hiển thị badge
-                const badge = document.getElementById('chatbotBadge');
-                badge.style.display = 'flex';
                 this.scrollToBottom();
             } else {
                 // Không có lịch sử, hiển thị welcome message
@@ -188,9 +247,6 @@ class Chatbot {
                 message: 'Xin chào! 👋 Tôi là trợ lý ảo của website Tìm Việc Làm. Tôi có thể giúp bạn:\n\n• Tìm việc làm phù hợp\n• Hướng dẫn nộp đơn ứng tuyển\n• Hướng dẫn đăng ký tài khoản\n• Hỗ trợ nhà tuyển dụng đăng tin\n\nBạn cần tôi giúp gì?'
             };
             this.addMessageToUI('', 'bot', true, welcomeMsg);
-            
-            const badge = document.getElementById('chatbotBadge');
-            badge.style.display = 'flex';
         }, 1000);
     }
     
@@ -244,12 +300,10 @@ class Chatbot {
         this.isOpen = !this.isOpen;
         const container = document.getElementById('chatbotContainer');
         const toggle = document.getElementById('chatbotToggle');
-        const badge = document.getElementById('chatbotBadge');
         
         if (this.isOpen) {
             container.classList.add('active');
             toggle.classList.add('active');
-            badge.style.display = 'none';
             document.getElementById('chatbotInput').focus();
         } else {
             container.classList.remove('active');

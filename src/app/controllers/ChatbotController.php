@@ -94,7 +94,8 @@ class ChatbotController extends BaseController {
         try {
             $nguoidungId = $_SESSION['nguoidung_id'];
             
-            $messages = $this->chatbotModel->layLichSuHoiThoai($sessionId);
+            // Lấy lịch sử theo nguoidung_id thay vì session_id
+            $messages = $this->chatbotModel->layLichSuTheoNguoiDung($nguoidungId);
             
             // Lấy session_id từ message gần nhất (nếu có)
             $latestSessionId = null;
@@ -129,12 +130,14 @@ class ChatbotController extends BaseController {
     
     public function newConversation() {
         try {
-            $sessionId = uniqid('chat_', true);
-            
             // Nếu người dùng đã đăng nhập, xóa tin nhắn cũ của họ
             if (isset($_SESSION['nguoidung_id'])) {
-                $this->chatbotModel->xoaHoiThoai($sessionId);
+                $nguoidungId = $_SESSION['nguoidung_id'];
+                $this->chatbotModel->xoaHoiThoaiTheoNguoiDung($nguoidungId);
             }
+            
+            // Tạo session ID mới
+            $sessionId = uniqid('chat_', true);
             
             $this->json([
                 'success' => true,
@@ -156,7 +159,8 @@ class ChatbotController extends BaseController {
     private function saveMessage($sessionId, $message, $response) {
         try {
             $responseText = is_array($response) ? json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $response;
-            $this->chatbotModel->luuTinNhan($sessionId, $message, $responseText);
+            $nguoidungId = isset($_SESSION['nguoidung_id']) ? $_SESSION['nguoidung_id'] : null;
+            $this->chatbotModel->luuTinNhan($sessionId, $message, $responseText, $nguoidungId);
         } catch (Exception $e) {
             error_log("Chatbot save message error: " . $e->getMessage());
         }
@@ -709,6 +713,66 @@ class ChatbotController extends BaseController {
         return null;
     }
 
+    private function extractAddressParts($diachi) {
+        $diachiLower = mb_strtolower($diachi, 'UTF-8');
+        $parts = [
+            'duong' => null,
+            'phuong' => null,
+            'quan' => null,
+            'tinh' => null
+        ];
+        
+        // Danh sách tỉnh/thành phố
+        $danhSachTinh = [
+            'tp.hồ chí minh' => 'TP.Hồ Chí Minh', 'tp. hồ chí minh' => 'TP.Hồ Chí Minh',
+            'hồ chí minh' => 'TP.Hồ Chí Minh', 'sài gòn' => 'TP.Hồ Chí Minh', 'tp.hcm' => 'TP.Hồ Chí Minh',
+            'tp.hà nội' => 'TP.Hà Nội', 'tp. hà nội' => 'TP.Hà Nội', 'hà nội' => 'TP.Hà Nội',
+            'tp.đà nẵng' => 'TP.Đà Nẵng', 'tp. đà nẵng' => 'TP.Đà Nẵng', 'đà nẵng' => 'TP.Đà Nẵng',
+            'tp.cần thơ' => 'TP.Cần Thơ', 'tp. cần thơ' => 'TP.Cần Thơ', 'cần thơ' => 'TP.Cần Thơ',
+            'tp.hải phòng' => 'TP.Hải Phòng', 'tp. hải phòng' => 'TP.Hải Phòng', 'hải phòng' => 'TP.Hải Phòng',
+            'tp.huế' => 'TP.Huế', 'tp. huế' => 'TP.Huế', 'huế' => 'TP.Huế', 'thừa thiên huế' => 'TP.Huế',
+            'vĩnh long' => 'Vĩnh Long', 'an giang' => 'An Giang', 'bà rịa vũng tàu' => 'Bà Rịa - Vũng Tàu',
+            'bắc giang' => 'Bắc Giang', 'bắc kạn' => 'Bắc Kạn', 'bạc liêu' => 'Bạc Liêu',
+            'bắc ninh' => 'Bắc Ninh', 'bến tre' => 'Bến Tre', 'bình định' => 'Bình Định',
+            'bình dương' => 'Bình Dương', 'bình phước' => 'Bình Phước', 'bình thuận' => 'Bình Thuận',
+            'cà mau' => 'Cà Mau', 'cao bằng' => 'Cao Bằng', 'đắk lắk' => 'Đắk Lắk',
+            'đắk nông' => 'Đắk Nông', 'điện biên' => 'Điện Biên', 'đồng nai' => 'Đồng Nai',
+            'đồng tháp' => 'Đồng Tháp', 'gia lai' => 'Gia Lai', 'hà giang' => 'Hà Giang',
+            'hà nam' => 'Hà Nam', 'hà tĩnh' => 'Hà Tĩnh', 'hải dương' => 'Hải Dương',
+            'hậu giang' => 'Hậu Giang', 'hòa bình' => 'Hòa Bình', 'hưng yên' => 'Hưng Yên',
+            'khánh hòa' => 'Khánh Hòa', 'kiên giang' => 'Kiên Giang', 'kon tum' => 'Kon Tum',
+            'lai châu' => 'Lai Châu', 'lâm đồng' => 'Lâm Đồng', 'lạng sơn' => 'Lạng Sơn',
+            'lào cai' => 'Lào Cai', 'long an' => 'Long An', 'nam định' => 'Nam Định',
+            'nghệ an' => 'Nghệ An', 'ninh bình' => 'Ninh Bình', 'ninh thuận' => 'Ninh Thuận',
+            'phú thọ' => 'Phú Thọ', 'phú yên' => 'Phú Yên', 'quảng bình' => 'Quảng Bình',
+            'quảng nam' => 'Quảng Nam', 'quảng ngãi' => 'Quảng Ngãi', 'quảng ninh' => 'Quảng Ninh',
+            'quảng trị' => 'Quảng Trị', 'sóc trăng' => 'Sóc Trăng', 'sơn la' => 'Sơn La',
+            'tây ninh' => 'Tây Ninh', 'thái bình' => 'Thái Bình', 'thái nguyên' => 'Thái Nguyên',
+            'thanh hóa' => 'Thanh Hóa', 'tiền giang' => 'Tiền Giang', 'trà vinh' => 'Trà Vinh',
+            'tuyên quang' => 'Tuyên Quang', 'vĩnh phúc' => 'Vĩnh Phúc', 'yên bái' => 'Yên Bái'
+        ];
+        
+        // Tìm tỉnh/thành phố
+        foreach ($danhSachTinh as $keyword => $tenTinh) {
+            if (strpos($diachiLower, $keyword) !== false) {
+                $parts['tinh'] = $tenTinh;
+                break;
+            }
+        }
+        
+        // Tìm quận/huyện
+        if (preg_match('/(quận|huyện|thành phố|thị xã|tp\.)\s*([^,]+)/iu', $diachi, $matches)) {
+            $parts['quan'] = trim($matches[0]);
+        }
+        
+        // Tìm phường/xã
+        if (preg_match('/(phường|xã|thị trấn)\s*([^,]+)/iu', $diachi, $matches)) {
+            $parts['phuong'] = trim($matches[0]);
+        }
+        
+        return $parts;
+    }
+    
     private function timViecGanToi() {
         // Kiểm tra đăng nhập
         if (!isset($_SESSION['nguoidung_id'])) {
@@ -731,72 +795,57 @@ class ChatbotController extends BaseController {
                 ];
             }
             
-            $diachi = mb_strtolower($diachi, 'UTF-8');
-            $diaDiem = null;
+            $diachiLower = mb_strtolower($diachi, 'UTF-8');
             
-            // Danh sách tỉnh/thành phố
-            $danhSachTinh = [
-                'hà nội' => 'Hà Nội', 'hồ chí minh' => 'Hồ Chí Minh', 'sài gòn' => 'Hồ Chí Minh',
-                'đà nẵng' => 'Đà Nẵng', 'hải phòng' => 'Hải Phòng', 'cần thơ' => 'Cần Thơ',
-                'an giang' => 'An Giang', 'bà rịa vũng tàu' => 'Bà Rịa - Vũng Tàu',
-                'bắc giang' => 'Bắc Giang', 'bắc kạn' => 'Bắc Kạn', 'bạc liêu' => 'Bạc Liêu',
-                'bắc ninh' => 'Bắc Ninh', 'bến tre' => 'Bến Tre', 'bình định' => 'Bình Định',
-                'bình dương' => 'Bình Dương', 'bình phước' => 'Bình Phước', 'bình thuận' => 'Bình Thuận',
-                'cà mau' => 'Cà Mau', 'cao bằng' => 'Cao Bằng', 'đắk lắk' => 'Đắk Lắk',
-                'đắk nông' => 'Đắk Nông', 'điện biên' => 'Điện Biên', 'đồng nai' => 'Đồng Nai',
-                'đồng tháp' => 'Đồng Tháp', 'gia lai' => 'Gia Lai', 'hà giang' => 'Hà Giang',
-                'hà nam' => 'Hà Nam', 'hà tĩnh' => 'Hà Tĩnh', 'hải dương' => 'Hải Dương',
-                'hậu giang' => 'Hậu Giang', 'hòa bình' => 'Hòa Bình', 'hưng yên' => 'Hưng Yên',
-                'khánh hòa' => 'Khánh Hòa', 'kiên giang' => 'Kiên Giang', 'kon tum' => 'Kon Tum',
-                'lai châu' => 'Lai Châu', 'lâm đồng' => 'Lâm Đồng', 'lạng sơn' => 'Lạng Sơn',
-                'lào cai' => 'Lào Cai', 'long an' => 'Long An', 'nam định' => 'Nam Định',
-                'nghệ an' => 'Nghệ An', 'ninh bình' => 'Ninh Bình', 'ninh thuận' => 'Ninh Thuận',
-                'phú thọ' => 'Phú Thọ', 'phú yên' => 'Phú Yên', 'quảng bình' => 'Quảng Bình',
-                'quảng nam' => 'Quảng Nam', 'quảng ngãi' => 'Quảng Ngãi', 'quảng ninh' => 'Quảng Ninh',
-                'quảng trị' => 'Quảng Trị', 'sóc trăng' => 'Sóc Trăng', 'sơn la' => 'Sơn La',
-                'tây ninh' => 'Tây Ninh', 'thái bình' => 'Thái Bình', 'thái nguyên' => 'Thái Nguyên',
-                'thanh hóa' => 'Thanh Hóa', 'thừa thiên huế' => 'Thừa Thiên Huế', 'huế' => 'Thừa Thiên Huế',
-                'tiền giang' => 'Tiền Giang', 'trà vinh' => 'Trà Vinh', 'tuyên quang' => 'Tuyên Quang',
-                'vĩnh long' => 'Vĩnh Long', 'vĩnh phúc' => 'Vĩnh Phúc', 'yên bái' => 'Yên Bái'
-            ];
+            // Tách các thành phần địa chỉ (đường, phường, quận, tỉnh)
+            $addressParts = $this->extractAddressParts($diachi);
             
-            foreach ($danhSachTinh as $keyword => $tenTinh) {
-                if (strpos($diachi, $keyword) !== false) {
-                    $diaDiem = $tenTinh;
-                    break;
+            // Tìm việc làm dựa trên địa chỉ người dùng
+            $jobs = $this->chatbotModel->timViecTheoViTri($diachiLower, $addressParts);
+            
+            if (empty($jobs)) {
+                // Nếu không tìm thấy, thử tìm theo tỉnh/thành phố
+                $diaDiem = $addressParts['tinh'] ?? null;
+                
+                if ($diaDiem) {
+                    $diaDiemData = $this->chatbotModel->timDiaDiem($diaDiem);
+                    if ($diaDiemData) {
+                        $jobs = $this->chatbotModel->timKiemViecLam([
+                            'tinhthanh_id' => $diaDiemData['id'],
+                            'limit' => 10
+                        ]);
+                    }
+                }
+                
+                if (empty($jobs)) {
+                    $message = "Hiện tại chưa có việc làm nào gần bạn";
+                    if ($diaDiem) {
+                        $message .= " tại {$diaDiem}";
+                    }
+                    $message .= ".\n\nGợi ý:\n• Thử mở rộng khu vực tìm kiếm\n• Tìm việc theo ngành nghề\n• Xem các tỉnh/thành phố khác";
+                    
+                    return [
+                        'type' => 'text',
+                        'message' => $message,
+                        'suggestions' => [
+                            'Tìm việc IT',
+                            'Địa điểm',
+                            'Ngành nghề',
+                            'Giúp đỡ'
+                        ]
+                    ];
                 }
             }
             
-            if (!$diaDiem) {
-                return [
-                    'type' => 'text',
-                    'message' => 'Không thể xác định địa điểm của bạn. Vui lòng cập nhật địa chỉ rõ ràng hơn!'
-                ];
-            }
-            
-            $diaDiemData = $this->chatbotModel->timDiaDiem($diaDiem);
-            if (!$diaDiemData) {
-                return [
-                    'type' => 'text',
-                    'message' => "Không tìm thấy địa điểm {$diaDiem}. Hãy thử tìm việc tại các tỉnh khác!"
-                ];
-            }
-            
-            $jobs = $this->chatbotModel->timKiemViecLam([
-                'tinhthanh_id' => $diaDiemData['id'],
-                'limit' => 10
-            ]);
-            
-            if (empty($jobs)) {
-                return [
-                    'type' => 'text',
-                    'message' => "Hiện tại chưa có việc làm nào tại {$diaDiem}. Hãy thử tìm ở tỉnh khác!"
-                ];
+            // Lấy tên địa điểm để hiển thị
+            $displayLocation = $addressParts['tinh'] ?? 'khu vực của bạn';
+            if (!empty($addressParts['quan'])) {
+                $displayLocation = $addressParts['quan'] . ', ' . $displayLocation;
             }
             
             return [
                 'type' => 'jobs',
-                'message' => "Tìm thấy " . count($jobs) . " việc làm tại {$diaDiem}:",
+                'message' => "Tìm thấy " . count($jobs) . " việc làm gần {$displayLocation}:",
                 'jobs' => $jobs
             ];
             
