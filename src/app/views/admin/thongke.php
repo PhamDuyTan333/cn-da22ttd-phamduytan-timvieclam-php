@@ -293,10 +293,23 @@ function showUserChart(type) {
 
 // Lấy dữ liệu từ server
 fetch('<?php echo BASE_URL; ?>api/thongke')
-    .then(response => response.json())
+    .then(response => {
+        console.log('API Response Status:', response.status);
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Dữ liệu thống kê:', data); // Debug
+        
+        if (!data || typeof data !== 'object') {
+            throw new Error('Dữ liệu không hợp lệ');
+        }
+        
         // Lưu dữ liệu vào biến global
         statsData = data;
+        
         // Biểu đồ vai trò
         new Chart(document.getElementById('chartVaitro'), {
             type: 'doughnut',

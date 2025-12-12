@@ -90,24 +90,26 @@ class ApiModel {
             FROM (
                 SELECT ngaydang as ngay, 1 as tinmoi, 0 as donnop, 0 as nguoidungmoi
                 FROM tintuyendung
-                WHERE ngaydang >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                WHERE ngaydang >= DATE_SUB(NOW(), INTERVAL :days1 DAY)
                 
                 UNION ALL
                 
                 SELECT ngaynop as ngay, 0 as tinmoi, 1 as donnop, 0 as nguoidungmoi
                 FROM donungtuyen
-                WHERE ngaynop >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                WHERE ngaynop >= DATE_SUB(NOW(), INTERVAL :days2 DAY)
                 
                 UNION ALL
                 
                 SELECT ngaytao as ngay, 0 as tinmoi, 0 as donnop, 1 as nguoidungmoi
                 FROM nguoidung
-                WHERE ngaytao >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                WHERE ngaytao >= DATE_SUB(NOW(), INTERVAL :days3 DAY)
             ) combined
             GROUP BY DATE(ngay)
             ORDER BY ngay";
         $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':days', $days, PDO::PARAM_INT);
+        $stmt->bindParam(':days1', $days, PDO::PARAM_INT);
+        $stmt->bindParam(':days2', $days, PDO::PARAM_INT);
+        $stmt->bindParam(':days3', $days, PDO::PARAM_INT);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -116,6 +118,50 @@ class ApiModel {
             $item['tinmoi'] = (int)$item['tinmoi'];
             $item['donnop'] = (int)$item['donnop'];
             $item['nguoidungmoi'] = (int)$item['nguoidungmoi'];
+        }
+        
+        return $result;
+    }
+    
+    public function layNguoiDungTheoKhoangThoiGian($type = 'day') {
+        if ($type === 'week') {
+            // Theo tuần (12 tuần gần nhất)
+            $sql = "SELECT 
+                CONCAT('Tuần ', WEEK(ngaytao, 1)) as label,
+                DATE_FORMAT(ngaytao, '%Y-W%v') as period,
+                COUNT(*) as soluong
+                FROM nguoidung
+                WHERE ngaytao >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
+                GROUP BY WEEK(ngaytao, 1), YEAR(ngaytao)
+                ORDER BY YEAR(ngaytao), WEEK(ngaytao, 1)";
+        } elseif ($type === 'month') {
+            // Theo tháng (12 tháng gần nhất)
+            $sql = "SELECT 
+                DATE_FORMAT(ngaytao, '%m/%Y') as label,
+                DATE_FORMAT(ngaytao, '%Y-%m') as period,
+                COUNT(*) as soluong
+                FROM nguoidung
+                WHERE ngaytao >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY YEAR(ngaytao), MONTH(ngaytao)
+                ORDER BY YEAR(ngaytao), MONTH(ngaytao)";
+        } else {
+            // Theo ngày (30 ngày gần nhất) - mặc định
+            $sql = "SELECT 
+                DATE_FORMAT(ngaytao, '%d/%m') as label,
+                DATE(ngaytao) as period,
+                COUNT(*) as soluong
+                FROM nguoidung
+                WHERE ngaytao >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY DATE(ngaytao)
+                ORDER BY DATE(ngaytao)";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($result as &$item) {
+            $item['soluong'] = (int)$item['soluong'];
         }
         
         return $result;
