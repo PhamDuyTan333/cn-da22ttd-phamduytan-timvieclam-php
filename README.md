@@ -14,6 +14,7 @@
 Website Tìm Việc Làm là ứng dụng web được xây dựng nhằm hỗ trợ kết nối hiệu quả giữa ứng viên và nhà tuyển dụng trên thị trường lao động Việt Nam.  
 Hệ thống được phát triển theo mô hình MVC (Model-View-Controller), sử dụng ngôn ngữ PHP cho backend, cơ sở dữ liệu MySQL, kết hợp giao diện hiện đại với HTML, CSS, JavaScript.  
 Ứng dụng cung cấp giải pháp toàn diện giúp ứng viên dễ dàng tìm kiếm và ứng tuyển công việc, nhà tuyển dụng quản lý tin tuyển dụng chuyên nghiệp, đồng thời hỗ trợ quản trị viên giám sát và điều hành hệ thống một cách minh bạch, chính xác.
+
 ---
 ## Tính năng
 - **Dành cho Ứng viên**: Đăng ký/đăng nhập (mặc định vai trò ứng viên), cập nhật hồ sơ cá nhân (thông tin, CV, kỹ năng), tìm kiếm và lọc việc làm nâng cao (từ khóa, ngành nghề, tỉnh/thành phố, mức lương, loại công việc), xem chi tiết tin tuyển dụng, nộp đơn ứng tuyển trực tuyến (upload CV, viết thư xin việc), theo dõi trạng thái đơn đã nộp, sử dụng chatbot hỗ trợ tìm việc nhanh chóng.
@@ -24,9 +25,7 @@ Hệ thống được phát triển theo mô hình MVC (Model-View-Controller), 
 ---
 ## Giới Thiệu Về Repositories của tôi
 Đây là nơi tôi lưu trữ toàn bộ source code của website và các tài liệu liên quan đến đồ án chuyên ngành. Toàn bộ nội dung nằm ở branch master trong repository này. Dưới đây là mô tả chi tiết:
-
 -**src**: Đây là nơi lưu source code liên quan đến ứng dụng web (theo mô hình MVC) và cơ sở dữ liệu.
-
 -**thesis**: Đây là nơi chứa các tập tin tài liệu văn bản, file thiết kế và báo cáo của Đồ án.
 
 ---
