@@ -95,8 +95,7 @@ class DangnhapController extends BaseController {
                     $this->redirect('nhatuyendung');
                     break;
                 case 'choduyet':
-                    $_SESSION['info'] = 'Yêu cầu trở thành nhà tuyển dụng của bạn đang chờ phê duyệt';
-                    $this->redirect('');
+                    $this->redirect('taikhoan/choduyet');
                     break;
                 default:
                     $this->redirect('');

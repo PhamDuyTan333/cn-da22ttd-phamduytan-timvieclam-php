@@ -280,6 +280,196 @@ class UngvienController extends BaseController {
             $this->redirect('ungvien/yeucautuyendung');
         }
     }
+    
+    public function suayeucau() {
+        $nguoidungId = $_SESSION['nguoidung_id'];
+        $vaitro = $_SESSION['vaitro'];
+        
+        // Kiểm tra xem user có đang chờ duyệt không
+        if ($vaitro !== 'choduyet') {
+            $_SESSION['error'] = 'Bạn không có yêu cầu nào đang chờ duyệt';
+            $this->redirect('');
+            return;
+        }
+        
+        // Lấy thông tin nhà tuyển dụng đã nộp
+        $sql = "SELECT * FROM thongtinnhatuyendung WHERE nguoidung_id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $nguoidungId);
+        $stmt->execute();
+        $thongTinNhaTuyenDung = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$thongTinNhaTuyenDung) {
+            $_SESSION['error'] = 'Không tìm thấy thông tin yêu cầu';
+            $this->redirect('');
+            return;
+        }
+        
+        // Nếu là POST thì xử lý cập nhật
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            verify_csrf();
+            
+            $tencongty = $this->sanitize($_POST['tencongty'] ?? '');
+            $masothue = $this->sanitize($_POST['masothue'] ?? '');
+            $diachi_congty = $this->sanitize($_POST['diachi_congty'] ?? '');
+            $website = $this->sanitize($_POST['website'] ?? '');
+            $emailcongty = $this->sanitize($_POST['email_congty'] ?? '');
+            $quymo = $this->sanitize($_POST['quymo'] ?? '');
+            $linhvuc = $this->sanitize($_POST['linhvuc'] ?? '');
+            $mota = $this->sanitize($_POST['mota'] ?? '');
+            $lydoyeucau = $this->sanitize($_POST['lydoyeucau'] ?? '');
+            
+            // Validate
+            $errors = [];
+            
+            if (empty($tencongty)) $errors[] = 'Vui lòng nhập tên công ty';
+            if (empty($masothue)) $errors[] = 'Vui lòng nhập mã số thuế';
+            if (empty($diachi_congty)) $errors[] = 'Vui lòng nhập địa chỉ công ty';
+            if (empty($emailcongty)) {
+                $errors[] = 'Vui lòng nhập email công ty';
+            } elseif (!filter_var($emailcongty, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Email công ty không hợp lệ';
+            }
+            if (empty($lydoyeucau)) $errors[] = 'Vui lòng nhập lý do yêu cầu';
+            
+            if (!empty($errors)) {
+                $_SESSION['error'] = implode('<br>', $errors);
+                $data = [
+                    'pageTitle' => 'Chỉnh sửa yêu cầu trở thành nhà tuyển dụng',
+                    'thongTinNhaTuyenDung' => $thongTinNhaTuyenDung,
+                    'old' => $_POST
+                ];
+                $this->view('ungvien/suayeucau', $data);
+                return;
+            }
+            
+            try {
+                // Cập nhật thông tin
+                $sql = "UPDATE thongtinnhatuyendung 
+                        SET tencongty = :tencongty,
+                            masothue = :masothue,
+                            diachi_congty = :diachi_congty,
+                            website = :website,
+                            email_congty = :emailcongty,
+                            quymo = :quymo,
+                            linhvuc = :linhvuc,
+                            mota = :mota,
+                            lydoyeucau = :lydoyeucau
+                        WHERE nguoidung_id = :nguoidung_id";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->bindParam(':tencongty', $tencongty);
+                $stmt->bindParam(':masothue', $masothue);
+                $stmt->bindParam(':diachi_congty', $diachi_congty);
+                $stmt->bindParam(':website', $website);
+                $stmt->bindParam(':emailcongty', $emailcongty);
+                $stmt->bindParam(':quymo', $quymo);
+                $stmt->bindParam(':linhvuc', $linhvuc);
+                $stmt->bindParam(':mota', $mota);
+                $stmt->bindParam(':lydoyeucau', $lydoyeucau);
+                $stmt->bindParam(':nguoidung_id', $nguoidungId);
+                $stmt->execute();
+                
+                // Upload logo mới nếu có
+                if (isset($_FILES['logo']) && $_FILES['logo']['error'] == 0) {
+                    $uploadResult = $this->uploadFile($_FILES['logo'], LOGO_PATH, ALLOWED_IMAGE_TYPES);
+                    
+                    if ($uploadResult['success']) {
+                        // Xóa logo cũ nếu có
+                        if (!empty($thongTinNhaTuyenDung['logo'])) {
+                            $oldLogoPath = LOGO_PATH . $thongTinNhaTuyenDung['logo'];
+                            if (file_exists($oldLogoPath)) {
+                                unlink($oldLogoPath);
+                            }
+                        }
+                        
+                        $sql = "UPDATE thongtinnhatuyendung SET logo = :logo WHERE nguoidung_id = :nguoidung_id";
+                        $stmt = $this->db->prepare($sql);
+                        $stmt->bindParam(':logo', $uploadResult['filename']);
+                        $stmt->bindParam(':nguoidung_id', $nguoidungId);
+                        $stmt->execute();
+                    }
+                }
+                
+                $_SESSION['success'] = 'Cập nhật thông tin thành công!';
+                $this->redirect('taikhoan/choduyet');
+                
+            } catch (Exception $e) {
+                $_SESSION['error'] = 'Có lỗi xảy ra: ' . $e->getMessage();
+                $data = [
+                    'pageTitle' => 'Chỉnh sửa yêu cầu trở thành nhà tuyển dụng',
+                    'thongTinNhaTuyenDung' => $thongTinNhaTuyenDung,
+                    'old' => $_POST
+                ];
+                $this->view('ungvien/suayeucau', $data);
+            }
+            return;
+        }
+        
+        // Hiển thị form sửa
+        $data = [
+            'pageTitle' => 'Chỉnh sửa yêu cầu trở thành nhà tuyển dụng',
+            'thongTinNhaTuyenDung' => $thongTinNhaTuyenDung
+        ];
+        $this->view('ungvien/suayeucau', $data);
+    }
+    
+    public function huyyeucau() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $_SESSION['error'] = 'Yêu cầu không hợp lệ';
+            $this->redirect('');
+            return;
+        }
+        
+        verify_csrf();
+        
+        $nguoidungId = $_SESSION['nguoidung_id'];
+        $vaitro = $_SESSION['vaitro'];
+        
+        // Kiểm tra xem user có đang chờ duyệt không
+        if ($vaitro !== 'choduyet') {
+            $_SESSION['error'] = 'Bạn không có yêu cầu nào đang chờ duyệt';
+            $this->redirect('');
+            return;
+        }
+        
+        try {
+            // Lấy thông tin logo để xóa file
+            $sql = "SELECT logo FROM thongtinnhatuyendung WHERE nguoidung_id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':id', $nguoidungId);
+            $stmt->execute();
+            $info = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Xóa logo nếu có
+            if ($info && !empty($info['logo'])) {
+                $logoPath = LOGO_PATH . $info['logo'];
+                if (file_exists($logoPath)) {
+                    unlink($logoPath);
+                }
+            }
+            
+            // Xóa thông tin nhà tuyển dụng
+            $sql = "DELETE FROM thongtinnhatuyendung WHERE nguoidung_id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':id', $nguoidungId);
+            $stmt->execute();
+            
+            // Đặt lại vai trò về ứng viên
+            $sql = "UPDATE nguoidung SET vaitro = 'ungvien' WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':id', $nguoidungId);
+            $stmt->execute();
+            
+            $_SESSION['vaitro'] = 'ungvien';
+            $_SESSION['success'] = 'Đã hủy yêu cầu trở thành nhà tuyển dụng. Tài khoản của bạn đã trở về vai trò ứng viên.';
+            $this->redirect('');
+            
+        } catch (Exception $e) {
+            $_SESSION['error'] = 'Có lỗi xảy ra: ' . $e->getMessage();
+            $this->redirect('taikhoan/choduyet');
+        }
+    }
 
     public function thaydoicv() {
         header('Content-Type: application/json');

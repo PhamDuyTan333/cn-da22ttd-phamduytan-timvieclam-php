@@ -38,8 +38,19 @@ class TintuyendungController extends BaseController {
         
         // Kiểm tra đã ứng tuyển chưa
         $daUngTuyen = false;
+        $cvHoSo = null;
         if (isset($_SESSION['nguoidung_id'])) {
             $daUngTuyen = $this->donModel->kiemTraUngTuyen($id, $_SESSION['nguoidung_id']);
+            
+            // Lấy CV từ hồ sơ ứng viên
+            if ($_SESSION['vaitro'] === 'ungvien') {
+                require_once BASE_PATH . 'app/models/ThongTinUngVienModel.php';
+                $ungvienModel = new ThongTinUngVienModel();
+                $hoSo = $ungvienModel->layThongTinTheoNguoiDung($_SESSION['nguoidung_id']);
+                if ($hoSo && !empty($hoSo['cv_file'])) {
+                    $cvHoSo = $hoSo['cv_file'];
+                }
+            }
         }
         
         // Lấy tin liên quan
@@ -49,6 +60,7 @@ class TintuyendungController extends BaseController {
             'pageTitle' => $tin['tieude'],
             'tin' => $tin,
             'daUngTuyen' => $daUngTuyen,
+            'cvHoSo' => $cvHoSo,
             'tinLienQuan' => $tinLienQuan
         ];
         
@@ -81,24 +93,41 @@ class TintuyendungController extends BaseController {
             $this->redirect('tintuyendung/chitiet/' . $id);
         }
         
-        // Upload CV
-        if (!isset($_FILES['cv']) || $_FILES['cv']['error'] != 0) {
-            $_SESSION['error'] = 'Vui lòng tải lên CV';
-            $this->redirect('tintuyendung/chitiet/' . $id);
-        }
+        // Xử lý CV
+        $cvFile = '';
+        $cvType = $_POST['cv_type'] ?? 'new';
         
-        $uploadResult = $this->uploadFile($_FILES['cv'], CV_PATH, ALLOWED_CV_TYPES);
-        
-        if (!$uploadResult['success']) {
-            $_SESSION['error'] = $uploadResult['message'];
-            $this->redirect('tintuyendung/chitiet/' . $id);
+        if ($cvType === 'existing' && !empty($_POST['cv_existing'])) {
+            // Sử dụng CV từ hồ sơ
+            $cvFile = $this->sanitize($_POST['cv_existing']);
+            
+            // Kiểm tra file có tồn tại không
+            if (!file_exists(CV_PATH . $cvFile)) {
+                $_SESSION['error'] = 'CV trong hồ sơ không tồn tại. Vui lòng upload CV mới.';
+                $this->redirect('tintuyendung/chitiet/' . $id);
+            }
+        } else {
+            // Upload CV mới
+            if (!isset($_FILES['cv']) || $_FILES['cv']['error'] != 0) {
+                $_SESSION['error'] = 'Vui lòng tải lên CV';
+                $this->redirect('tintuyendung/chitiet/' . $id);
+            }
+            
+            $uploadResult = $this->uploadFile($_FILES['cv'], CV_PATH, ALLOWED_CV_TYPES);
+            
+            if (!$uploadResult['success']) {
+                $_SESSION['error'] = $uploadResult['message'];
+                $this->redirect('tintuyendung/chitiet/' . $id);
+            }
+            
+            $cvFile = $uploadResult['filename'];
         }
         
         // Tạo đơn ứng tuyển
         $data = [
             'tintuyendung_id' => $id,
             'nguoidung_id' => $nguoidungId,
-            'cv_file' => $uploadResult['filename'],
+            'cv_file' => $cvFile,
             'thuungtuyen' => $thuungtuyen
         ];
         

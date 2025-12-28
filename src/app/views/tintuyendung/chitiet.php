@@ -194,11 +194,47 @@
                 <h3><i class="fas fa-paper-plane"></i> Ứng tuyển: <?php echo htmlspecialchars($tin['tieude']); ?></h3>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form method="POST" action="<?php echo BASE_URL; ?>tintuyendung/ungtuyen/<?php echo $tin['id']; ?>" enctype="multipart/form-data">
+            <form method="POST" action="<?php echo BASE_URL; ?>tintuyendung/ungtuyen/<?php echo $tin['id']; ?>" enctype="multipart/form-data" id="formUngTuyen">
                 <?php echo csrf_field(); ?>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="cv">CV đính kèm <span class="required">*</span></label>
+                        <label>CV đính kèm <span class="required">*</span></label>
+                        
+                        <?php if (isset($cvHoSo) && $cvHoSo): ?>
+                        <!-- Radio chọn loại CV -->
+                        <div class="cv-choice-group mb-3">
+                            <div class="custom-radio">
+                                <input type="radio" id="cvHoSo" name="cv_type" value="existing" checked>
+                                <label for="cvHoSo">
+                                    <i class="fas fa-file-pdf text-danger"></i>
+                                    <strong>Sử dụng CV trong hồ sơ</strong>
+                                    <br>
+                                    <small class="text-muted"><?php echo htmlspecialchars($cvHoSo); ?></small>
+                                </label>
+                            </div>
+                            <div class="custom-radio">
+                                <input type="radio" id="cvMoi" name="cv_type" value="new">
+                                <label for="cvMoi">
+                                    <i class="fas fa-upload text-primary"></i>
+                                    <strong>Upload CV mới</strong>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Input CV mới - ẩn mặc định -->
+                        <div id="cvUploadSection" style="display: none;">
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="cv" 
+                                   name="cv" 
+                                   accept=".pdf,.doc,.docx">
+                            <small class="form-text text-muted">Chỉ chấp nhận file PDF, DOC, DOCX (tối đa 5MB)</small>
+                        </div>
+                        
+                        <input type="hidden" name="cv_existing" value="<?php echo htmlspecialchars($cvHoSo); ?>">
+                        
+                        <?php else: ?>
+                        <!-- Nếu chưa có CV trong hồ sơ, chỉ cho upload -->
                         <input type="file" 
                                class="form-control" 
                                id="cv" 
@@ -206,6 +242,11 @@
                                accept=".pdf,.doc,.docx"
                                required>
                         <small class="form-text text-muted">Chỉ chấp nhận file PDF, DOC, DOCX (tối đa 5MB)</small>
+                        <div class="alert alert-info mt-2">
+                            <i class="fas fa-info-circle"></i>
+                            <small>Bạn chưa có CV trong hồ sơ. <a href="<?php echo BASE_URL; ?>ungvien/hoso">Cập nhật CV vào hồ sơ</a> để sử dụng cho các lần ứng tuyển sau.</small>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-group">
@@ -233,6 +274,40 @@
 <script>
 // Modal bootstrap simple
 document.addEventListener('DOMContentLoaded', function() {
+    // Xử lý chọn CV
+    const cvTypeRadios = document.querySelectorAll('input[name="cv_type"]');
+    const cvUploadSection = document.getElementById('cvUploadSection');
+    const cvFileInput = document.getElementById('cv');
+    
+    if (cvTypeRadios.length > 0 && cvUploadSection) {
+        cvTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'new') {
+                    cvUploadSection.style.display = 'block';
+                    cvFileInput.required = true;
+                } else {
+                    cvUploadSection.style.display = 'none';
+                    cvFileInput.required = false;
+                    cvFileInput.value = ''; // Clear file input
+                }
+            });
+        });
+    }
+    
+    // Xử lý submit form
+    const formUngTuyen = document.getElementById('formUngTuyen');
+    if (formUngTuyen) {
+        formUngTuyen.addEventListener('submit', function(e) {
+            const cvTypeChecked = document.querySelector('input[name="cv_type"]:checked');
+            if (cvTypeChecked && cvTypeChecked.value === 'existing') {
+                // Nếu dùng CV cũ, không cần file upload
+                if (cvFileInput) {
+                    cvFileInput.required = false;
+                }
+            }
+        });
+    }
+    
     const modalTriggers = document.querySelectorAll('[data-toggle="modal"]');
     modalTriggers.forEach(trigger => {
         trigger.addEventListener('click', function(e) {
@@ -266,6 +341,88 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php endif; ?>
 
 <style>
+/* CV Choice Group */
+.cv-choice-group {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f9f9f9;
+}
+
+.custom-radio {
+    margin-bottom: 12px;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.custom-radio:hover {
+    border-color: var(--primary-color);
+    background: #f0f7ff;
+}
+
+.custom-radio input[type="radio"] {
+    display: none;
+}
+
+.custom-radio input[type="radio"]:checked + label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.custom-radio input[type="radio"]:checked ~ label::before,
+.custom-radio:has(input[type="radio"]:checked) {
+    border-color: var(--primary-color);
+    background: #f0f7ff;
+}
+
+.custom-radio label {
+    cursor: pointer;
+    margin: 0;
+    display: block;
+    position: relative;
+    padding-left: 35px;
+}
+
+.custom-radio label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.custom-radio input[type="radio"]:checked + label::before {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    box-shadow: inset 0 0 0 4px white;
+}
+
+.custom-radio label i {
+    font-size: 1.2em;
+    margin-right: 8px;
+}
+
+.custom-radio label small {
+    display: block;
+    margin-top: 4px;
+    padding-left: 0;
+}
+
+#cvUploadSection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #ccc;
+}
+
 .job-detail-card {
     background: white;
     border-radius: 12px;

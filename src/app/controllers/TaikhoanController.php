@@ -121,6 +121,31 @@ class TaikhoanController extends BaseController {
         require_once BASE_PATH . 'app/views/taikhoan/doimatkhau.php';
     }
 
+    public function choduyet() {
+        $userId = $_SESSION['nguoidung_id'];
+        $vaitro = $_SESSION['vaitro'];
+        
+        // Kiểm tra xem có đang chờ duyệt không
+        if ($vaitro !== 'choduyet') {
+            $this->redirect('');
+            return;
+        }
+        
+        // Lấy thông tin nhà tuyển dụng đã nộp
+        $sql = "SELECT * FROM thongtinnhatuyendung WHERE nguoidung_id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $userId);
+        $stmt->execute();
+        $thongTinNhaTuyenDung = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $data = [
+            'pageTitle' => 'Chờ duyệt',
+            'thongTinNhaTuyenDung' => $thongTinNhaTuyenDung
+        ];
+        
+        $this->view('taikhoan/choduyet', $data);
+    }
+
     public function capnhat() {
         $userId = $_SESSION['nguoidung_id'];
         

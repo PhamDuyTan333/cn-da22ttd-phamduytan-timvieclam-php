@@ -16,6 +16,12 @@ class HomeController extends BaseController {
     }
     
     public function index() {
+        // Nếu user đang chờ duyệt, chuyển đến trang chờ duyệt
+        if (isset($_SESSION['vaitro']) && $_SESSION['vaitro'] === 'choduyet') {
+            $this->redirect('taikhoan/choduyet');
+            return;
+        }
+        
         $tinTuyenDung = $this->tinModel->layDanhSachMoiNhat(12);
         $nganhNghe = $this->danhMucModel->layNganhNghe(8);
         $tinhThanh = $this->danhMucModel->layTinhThanh();

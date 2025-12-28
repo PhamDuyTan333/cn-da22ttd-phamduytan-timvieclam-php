@@ -15,6 +15,11 @@ class ThongTinUngVienModel {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    
+    // Alias cho layThongTin - tên rõ ràng hơn
+    public function layThongTinTheoNguoiDung($nguoidungId) {
+        return $this->layThongTin($nguoidungId);
+    }
 
     public function taoThongTin($data) {
         $sql = "INSERT INTO " . $this->table . " 

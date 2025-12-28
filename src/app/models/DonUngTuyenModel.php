@@ -11,7 +11,7 @@ class DonUngTuyenModel {
     public function taoDon($data) {
         $sql = "INSERT INTO " . $this->table . " 
                 (tintuyendung_id, nguoidung_id, cv_file, thuungtuyen, trangthai)
-                VALUES (:tintuyendung_id, :nguoidung_id, :cv_file, :thuungtuyen, 'dangxem')";
+                VALUES (:tintuyendung_id, :nguoidung_id, :cv_file, :thuungtuyen, 'moi')";
         
         $stmt = $this->db->prepare($sql);
         

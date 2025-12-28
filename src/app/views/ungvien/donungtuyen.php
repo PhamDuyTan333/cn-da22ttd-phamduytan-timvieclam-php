@@ -10,27 +10,28 @@
     <div class="stats-grid">
         <?php
         $tongDon = count($danhSachDon);
-        $choXuLy = 0;
+        $donMoi = 0;
+        $dangXem = 0;
         $phongVan = 0;
-        $chap = 0;
-        $tuchoi = 0;
+        $nhanViec = 0;
+        $tuChoi = 0;
         
         foreach ($danhSachDon as $don) {
             switch ($don['trangthai']) {
                 case 'moi':
-                    $choXuLy++;
+                    $donMoi++;
                     break;
-                case 'dangxuly':
-                    $phongVan++;
+                case 'dangxem':
+                    $dangXem++;
                     break;
                 case 'phongvan':
                     $phongVan++;
                     break;
-                case 'chap':
-                    $chap++;
+                case 'nhanviec':
+                    $nhanViec++;
                     break;
                 case 'tuchoi':
-                    $tuchoi++;
+                    $tuChoi++;
                     break;
             }
         }
@@ -50,18 +51,18 @@
                 <i class="fas fa-clock"></i>
             </div>
             <div class="stat-info">
-                <h3><?php echo $choXuLy; ?></h3>
-                <p>Chờ xử lý</p>
+                <h3><?php echo $donMoi; ?></h3>
+                <p>Đơn mới</p>
             </div>
         </div>
         
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <i class="fas fa-users"></i>
+                <i class="fas fa-eye"></i>
             </div>
             <div class="stat-info">
-                <h3><?php echo $phongVan; ?></h3>
-                <p>Phỏng vấn</p>
+                <h3><?php echo $dangXem; ?></h3>
+                <p>Đang xem</p>
             </div>
         </div>
         
@@ -70,8 +71,8 @@
                 <i class="fas fa-check-circle"></i>
             </div>
             <div class="stat-info">
-                <h3><?php echo $chap; ?></h3>
-                <p>Chấp nhận</p>
+                <h3><?php echo $nhanViec; ?></h3>
+                <p>Nhận việc</p>
             </div>
         </div>
     </div>
@@ -127,25 +128,30 @@
                                         $statusText = 'Mới';
                                         $statusIcon = 'fa-clock';
                                         break;
-                                    case 'dangxuly':
+                                    case 'dangxem':
                                         $statusClass = 'status-processing';
-                                        $statusText = 'Đang xử lý';
-                                        $statusIcon = 'fa-spinner';
+                                        $statusText = 'Đang xem';
+                                        $statusIcon = 'fa-eye';
                                         break;
                                     case 'phongvan':
                                         $statusClass = 'status-interview';
                                         $statusText = 'Phỏng vấn';
                                         $statusIcon = 'fa-users';
                                         break;
-                                    case 'chap':
+                                    case 'nhanviec':
                                         $statusClass = 'status-accepted';
-                                        $statusText = 'Chấp nhận';
+                                        $statusText = 'Nhận việc';
                                         $statusIcon = 'fa-check-circle';
                                         break;
                                     case 'tuchoi':
                                         $statusClass = 'status-rejected';
                                         $statusText = 'Từ chối';
                                         $statusIcon = 'fa-times-circle';
+                                        break;
+                                    default:
+                                        $statusClass = 'status-new';
+                                        $statusText = 'Mới';
+                                        $statusIcon = 'fa-clock';
                                         break;
                                 }
                                 ?>
