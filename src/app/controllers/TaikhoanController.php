@@ -123,10 +123,34 @@ class TaikhoanController extends BaseController {
 
     public function choduyet() {
         $userId = $_SESSION['nguoidung_id'];
-        $vaitro = $_SESSION['vaitro'];
         
-        // Kiểm tra xem có đang chờ duyệt không
-        if ($vaitro !== 'choduyet') {
+        // Lấy vai trò thực tế từ database để đồng bộ với session
+        $user = $this->nguoiDungModel->layThongTin($userId);
+        
+        if (!$user) {
+            $_SESSION['error'] = 'Không tìm thấy thông tin tài khoản';
+            $this->redirect('');
+            return;
+        }
+        
+        // Cập nhật session nếu vai trò đã thay đổi
+        if ($user['vaitro'] !== $_SESSION['vaitro']) {
+            $_SESSION['vaitro'] = $user['vaitro'];
+            
+            // Nếu đã được duyệt hoặc bị từ chối
+            if ($user['vaitro'] === 'tuyendung') {
+                $_SESSION['success'] = 'Yêu cầu của bạn đã được phê duyệt! Bạn đã trở thành nhà tuyển dụng.';
+                $this->redirect('nhatuyendung');
+                return;
+            } elseif ($user['vaitro'] === 'ungvien') {
+                $_SESSION['error'] = 'Yêu cầu của bạn đã bị từ chối. Vui lòng kiểm tra lại thông tin và gửi lại yêu cầu.';
+                $this->redirect('ungvien/hoso');
+                return;
+            }
+        }
+        
+        // Nếu không còn chờ duyệt, chuyển về trang chủ
+        if ($user['vaitro'] !== 'choduyet') {
             $this->redirect('');
             return;
         }

@@ -42,6 +42,12 @@ class ChatbotController extends BaseController {
             }
             
             $input = json_decode(file_get_contents('php://input'), true);
+            
+            // Check if JSON parsing failed
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->json(['error' => 'Invalid JSON format'], 400);
+            }
+            
             $message = trim($input['message'] ?? '');
             $sessionId = trim($input['sessionId'] ?? '');
             
@@ -82,6 +88,12 @@ class ChatbotController extends BaseController {
         }
         
         $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Check if JSON parsing failed
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->json(['error' => 'Invalid JSON format'], 400);
+        }
+        
         $sessionId = trim($input['sessionId'] ?? '');
         $userId = trim($input['userId'] ?? '');
         

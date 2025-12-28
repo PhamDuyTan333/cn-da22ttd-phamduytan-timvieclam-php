@@ -182,5 +182,42 @@ function dd(...$vars) {
     echo '</pre>';
     die();
 }
+
+/**
+ * Đồng bộ vai trò từ database với session
+ * Gọi hàm này khi cần cập nhật vai trò người dùng
+ */
+function sync_user_role() {
+    if (!isset($_SESSION['nguoidung_id'])) {
+        return false;
+    }
+    
+    require_once BASE_PATH . 'app/models/NguoiDungModel.php';
+    $nguoiDungModel = new NguoiDungModel();
+    $user = $nguoiDungModel->layThongTin($_SESSION['nguoidung_id']);
+    
+    if (!$user) {
+        return false;
+    }
+    
+    // Nếu vai trò đã thay đổi
+    if ($user['vaitro'] !== $_SESSION['vaitro']) {
+        $oldRole = $_SESSION['vaitro'];
+        $_SESSION['vaitro'] = $user['vaitro'];
+        
+        // Thông báo theo thay đổi
+        if ($oldRole === 'choduyet' && $user['vaitro'] === 'tuyendung') {
+            $_SESSION['success'] = 'Chúc mừng! Yêu cầu trở thành nhà tuyển dụng của bạn đã được phê duyệt.';
+            return 'approved';
+        } elseif ($oldRole === 'choduyet' && $user['vaitro'] === 'ungvien') {
+            $_SESSION['error'] = 'Yêu cầu trở thành nhà tuyển dụng của bạn đã bị từ chối. Vui lòng kiểm tra lại thông tin và gửi lại yêu cầu.';
+            return 'rejected';
+        }
+        
+        return 'changed';
+    }
+    
+    return 'unchanged';
+}
 ?>
 

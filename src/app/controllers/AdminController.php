@@ -105,6 +105,25 @@ class AdminController extends BaseController {
         $this->view('admin/yeucaunhatuyendung', $data);
     }
 
+    public function chitietyeucau($id) {
+        $id = (int)$id;
+        
+        $thongTin = $this->adminModel->layChiTietYeuCau($id);
+        
+        if (!$thongTin) {
+            $_SESSION['error'] = 'Không tìm thấy yêu cầu này';
+            $this->redirect('admin/yeucaunhatuyendung');
+            return;
+        }
+        
+        $data = [
+            'pageTitle' => 'Chi tiết yêu cầu - ' . $thongTin['tencongty'],
+            'thongTin' => $thongTin
+        ];
+        
+        $this->view('admin/chitietyeucau', $data);
+    }
+    
     public function duyetyeucau($id) {
         $id = (int)$id;
         

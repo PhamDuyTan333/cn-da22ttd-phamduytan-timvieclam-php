@@ -49,6 +49,7 @@
                         <?php elseif ($_SESSION['vaitro'] == 'tuyendung'): ?>
                             <li><a href="<?php echo BASE_URL; ?>nhatuyendung">Quản lý tin</a></li>
                         <?php elseif ($_SESSION['vaitro'] == 'choduyet'): ?>
+                            <li><a href="<?php echo BASE_URL; ?>ungvien/donungtuyen">Đơn ứng tuyển</a></li>
                             <li><a href="<?php echo BASE_URL; ?>taikhoan/choduyet"><i class="fas fa-hourglass-half"></i> Chờ duyệt</a></li>
                         <?php else: ?>
                             <li><a href="<?php echo BASE_URL; ?>ungvien/donungtuyen">Đơn ứng tuyển</a></li>

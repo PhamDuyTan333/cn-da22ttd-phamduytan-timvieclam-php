@@ -66,14 +66,8 @@ class DangkyController extends BaseController {
         
         if (empty($matkhau)) {
             $errors[] = 'Vui lòng nhập mật khẩu';
-        } elseif (strlen($matkhau) < 8) {
-            $errors[] = 'Mật khẩu phải có ít nhất 8 ký tự';
-        } elseif (!preg_match('/[A-Z]/', $matkhau)) {
-            $errors[] = 'Mật khẩu phải có ít nhất 1 chữ hoa';
-        } elseif (!preg_match('/[a-z]/', $matkhau)) {
-            $errors[] = 'Mật khẩu phải có ít nhất 1 chữ thường';
-        } elseif (!preg_match('/[0-9]/', $matkhau)) {
-            $errors[] = 'Mật khẩu phải có ít nhất 1 chữ số';
+        } elseif (strlen($matkhau) < 6) {
+            $errors[] = 'Mật khẩu phải có ít nhất 6 ký tự';
         }
         
         if ($matkhau !== $xacnhanmatkhau) {

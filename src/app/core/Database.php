@@ -17,7 +17,15 @@ class Database {
                 ]
             );
         } catch (PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
+            // Log error
+            error_log("Database connection failed: " . $e->getMessage());
+            
+            // Show user-friendly message
+            if (DEBUG_MODE) {
+                die("Lỗi kết nối database: " . $e->getMessage());
+            } else {
+                die("Không thể kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau.");
+            }
         }
     }
     

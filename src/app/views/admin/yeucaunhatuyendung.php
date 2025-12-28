@@ -118,7 +118,12 @@
                                     <?php echo date('d/m/Y H:i', strtotime($item['ngaygui'])); ?>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <div class="d-flex gap-2 justify-content-center">
+                                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                        <a href="<?php echo BASE_URL; ?>admin/chitietyeucau/<?php echo $item['id']; ?>" 
+                                           class="btn btn-sm btn-info text-white"
+                                           title="Xem chi tiết">
+                                            <i class="fas fa-eye me-1"></i>Chi tiết
+                                        </a>
                                         <form method="POST" action="<?php echo BASE_URL; ?>admin/duyetyeucau/<?php echo $item['id']; ?>" class="d-inline">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="hanhdong" value="duyet">

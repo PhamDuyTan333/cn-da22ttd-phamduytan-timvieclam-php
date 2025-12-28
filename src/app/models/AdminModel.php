@@ -76,6 +76,20 @@ class AdminModel {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    public function layChiTietYeuCau($nguoidungId) {
+        $sql = "SELECT nd.id, nd.email, nd.hoten, nd.sodienthoai, nd.diachi, nd.avatar, nd.vaitro, nd.xacminh, nd.ngaytao,
+                       nhatd.tencongty, nhatd.masothue, nhatd.diachi_congty, nhatd.quymo, 
+                       nhatd.linhvuc, nhatd.mota, nhatd.website, nhatd.logo, nhatd.email_congty, nhatd.ngaygui, nhatd.lydoyeucau
+                FROM nguoidung nd
+                INNER JOIN thongtinnhatuyendung nhatd ON nd.id = nhatd.nguoidung_id
+                WHERE nd.id = :nguoidung_id AND nd.vaitro = 'choduyet'";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':nguoidung_id', $nguoidungId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     public function duyetNhaTuyenDung($nguoidungId) {
         try {

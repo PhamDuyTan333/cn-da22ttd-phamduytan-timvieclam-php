@@ -1,10 +1,10 @@
 <?php
 
-// Start session
-session_start();
-
 require_once 'config/config.php';
 require_once 'app/core/helpers.php';
+
+// Start session using Session class (has built-in security)
+Session::start();
 
 // Set security headers
 set_security_headers();

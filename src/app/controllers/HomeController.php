@@ -16,10 +16,15 @@ class HomeController extends BaseController {
     }
     
     public function index() {
-        // Nếu user đang chờ duyệt, chuyển đến trang chờ duyệt
-        if (isset($_SESSION['vaitro']) && $_SESSION['vaitro'] === 'choduyet') {
-            $this->redirect('taikhoan/choduyet');
-            return;
+        // Đồng bộ vai trò từ database nếu người dùng đã đăng nhập
+        if (isset($_SESSION['nguoidung_id'])) {
+            $roleStatus = sync_user_role();
+            
+            // Chuyển hướng nếu vai trò thay đổi
+            if ($roleStatus === 'approved') {
+                $this->redirect('nhatuyendung');
+                return;
+            }
         }
         
         $tinTuyenDung = $this->tinModel->layDanhSachMoiNhat(12);
